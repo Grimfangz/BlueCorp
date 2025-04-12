@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReadyForDispatch",
+  "type": "object",
+  "properties": {
+    "controlNumber": {
+      "type": "integer",
+      "description": "A control number that increases with any data change"
+    },
+    "salesOrder": {
+      "type": "string",
+      "description": "The sales order associated with the load"
+    },
+    "containers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "loadId": {
+            "type": "string",
+            "description": "A unique identifier for each container"
+          },
+          "containerType": {
+            "type": "string",
+            "description": "The type of container",
+            "enum": ["20RF", "40RF", "20HC", "40HC"]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "itemCode": {
+                  "type": "string",
+                  "description": "The item code"
+                },
+                "quantity": {
+                  "type": "number",
+                  "description": "The quantity of the item"
+                },
+                "cartonWeight": {
+                  "type": "number",
+                  "description": "The weight of each carton in kilograms"
+                }
+              },
+              "required": ["itemCode", "quantity", "cartonWeight"]
+            },
+            "description": "The items and quantities to load in each container"
+          }
+        },
+        "required": ["loadId", "containerType", "items"]
+      }
+    },
+    "deliveryAddress": {
+      "type": "object",
+      "properties": {
+        "street": {
+          "type": "string",
+          "description": "Street address"
+        },
+        "city": {
+          "type": "string",
+          "description": "City"
+        },
+        "state": {
+          "type": "string",
+          "description": "State"
+        },
+        "postalCode": {
+          "type": "string",
+          "description": "Postal code"
+        },
+        "country": {
+          "type": "string",
+          "description": "Country"
+        }
+      },
+      "required": ["street", "city", "state", "postalCode", "country"]
+    }
+  },
+  "required": ["controlNumber", "salesOrder", "containers", "deliveryAddress"]
+}
