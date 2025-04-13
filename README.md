@@ -1,4 +1,4 @@
-Architectural Diagram
+Architectural Diagram (this repo is for ReceivePayload Function)
      
      +-------------------+
      |       D365        |
