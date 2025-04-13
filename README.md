@@ -42,7 +42,8 @@ Architectural Diagram
 
 Still to implement:
   - Store and read control number to prevent duplicate records in queue
-  - Static Ip (via virtual NAT Gateway) for white listing)
+  - retries for file upload
+  - Static Ip (via virtual NAT Gateway) for white listing
   - File size hard restriction
   - Unit tests/integration testing with sample payload and expected results
 
