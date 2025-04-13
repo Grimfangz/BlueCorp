@@ -49,6 +49,7 @@ Still to implement:
 
 Possible Future Enhancements:
   - Terraform to generate and regenerate all azure resources
+  - Optimize trigger mechanisms and time intervals (cost benefits)
   - Different environments dev qa prod setup on github
   - Alternative way to store schemas and mappings to allow easier switch/versioning support
   - Email notifications to update progress
