@@ -9,6 +9,8 @@ using Azure.Storage.Queues.Models;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Schema;
+using Azure.Data.Tables;
+using Azure;
 
 namespace ReceiveAndQueue
 {
@@ -16,6 +18,7 @@ namespace ReceiveAndQueue
     {
         private readonly ILogger<ReceivePayload> _logger;
         private readonly IConfiguration _config;
+        private TableClient _tableClient;
 
         public ReceivePayload(ILogger<ReceivePayload> logger, IConfiguration config)
         {
@@ -41,6 +44,23 @@ namespace ReceiveAndQueue
             }
         }
 
+        public async Task AddDefaultEntityIfNotExistsAsync(TableClient tableClient, string partitionKey, string rowKey)
+        {
+            try
+            {
+                await tableClient.GetEntityAsync<TableEntity>(partitionKey, rowKey);
+            }
+            catch (RequestFailedException e) when (e.Status == 404)
+            {
+                var defaultEntity = new TableEntity(partitionKey, rowKey)
+                {
+                    { "Value", 0 } 
+                };
+
+                await tableClient.AddEntityAsync(defaultEntity);
+            }
+        }
+
         private int GetControlNumberFromPayload(string payload){
             using var doc = JsonDocument.Parse(payload);
             doc.RootElement.TryGetProperty("controlNumber", out var controlNum);
@@ -51,7 +71,6 @@ namespace ReceiveAndQueue
         [Function(nameof(ReceivePayload))]
         public async Task<HttpResponseData> Run([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req)
         {
-            // TODO: Implement Auth via Azure aad
             var response = req.CreateResponse(System.Net.HttpStatusCode.InternalServerError);
             _logger.LogInformation("Locked and Loaded");
             var requestBody = await new StreamReader(req.Body).ReadToEndAsync();
@@ -62,14 +81,31 @@ namespace ReceiveAndQueue
                     await response.WriteStringAsync("Payload failed schema validation");
                     return response;
                 }
+                var storageConnection = _config["AzureWebJobsStorage"];
 
                 // Check control number
                 int payloadControlNumber = GetControlNumberFromPayload(requestBody);
-                // TODO: compare this against db value to prevent enque duplicates?
 
-                var storageConnection = _config["AzureWebJobsStorage"];
+                _tableClient = new TableClient(storageConnection, "ControlCount");
+                await _tableClient.CreateIfNotExistsAsync();
+                await AddDefaultEntityIfNotExistsAsync(_tableClient, "ControlPartition", "ControlNumber");
+
+                var result = await _tableClient.GetEntityAsync<TableEntity>("ControlPartition", "ControlNumber");// "ControlNumber is the name of the RowKey
+                var entity = result.Value;
+
+                int storedControlNumber = Convert.ToInt32(entity["Value"]);
+                if (!(payloadControlNumber > storedControlNumber)){
+                    response = req.CreateResponse(System.Net.HttpStatusCode.OK);
+                    _logger.LogInformation($"Control Number is duplicate or outdated: {payloadControlNumber}");
+                    await response.WriteStringAsync("Payload control number is duplicate or oudated, will not enqueue");
+                    return response;
+                }
+                entity["Value"] = payloadControlNumber;
+                await _tableClient.UpdateEntityAsync(entity, result.Value.ETag, TableUpdateMode.Replace);
+                _logger.LogInformation($"Control Number has been updated: {payloadControlNumber}");
+
+                // Add to Queue
                 var queueName = "dispatch-processing-queue";
-
                 var queueClient = new QueueClient(storageConnection, queueName);
                 await queueClient.CreateIfNotExistsAsync();
                 await queueClient.SendMessageAsync(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(requestBody)));
