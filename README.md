@@ -41,8 +41,7 @@ Architectural Diagram (this repo is for ReceivePayload Function)
      +-------------------+
 
 Still to implement:
-  - Store and read control number to prevent duplicate records in queue
-  - retries for file upload
+  - retries for file upload (maybe Polly.Retry)
   - Static Ip (via virtual NAT Gateway) for white listing
   - File size hard restriction
   - Unit tests/integration testing with sample payload and expected results
